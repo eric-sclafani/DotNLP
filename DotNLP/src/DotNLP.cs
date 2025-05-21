@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DotNLP;
 
@@ -16,7 +17,7 @@ public class DotNLP
 				HandleContractionsPossessives(resultTokens, token);
 			}
 
-			else if (token.Any(char.IsPunctuation))
+			else if (token.Any(char.IsPunctuation) && !IsSpecialException((token)))	
 			{
 				HandlePunctuation(resultTokens, token);
 			}
@@ -32,6 +33,7 @@ public class DotNLP
 
 	private static void HandlePunctuation(IList<string> tokens, string token)
 	{
+		
 		var puncIndex = token.IndexOf(token.FirstOrDefault(char.IsPunctuation));
 		tokens.Add(token[..puncIndex]);
 
