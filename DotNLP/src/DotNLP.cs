@@ -3,11 +3,11 @@ using System.Text.RegularExpressions;
 
 namespace DotNLP;
 
-public class DotNLP
+public partial class DotNLP
 {
 	public IEnumerable<string> WordTokenize(string text)
 	{
-		IList<string> textTokens = text.Split(" ");
+		IList<string> textTokens = text.Split(" ", StringSplitOptions.RemoveEmptyEntries);
 		IList<string> resultTokens = [];
 
 		foreach (var token in textTokens)
@@ -17,7 +17,7 @@ public class DotNLP
 				HandleContractionsPossessives(resultTokens, token);
 			}
 
-			else if (token.Any(char.IsPunctuation) && !IsSpecialException((token)))	
+			else if (PuncRegex().IsMatch(token) && !IsSpecialException((token)))
 			{
 				HandlePunctuation(resultTokens, token);
 			}
@@ -33,52 +33,53 @@ public class DotNLP
 
 	private static void HandlePunctuation(IList<string> tokens, string token)
 	{
-		
-		var puncIndex = token.IndexOf(token.FirstOrDefault(char.IsPunctuation));
-		tokens.Add(token[..puncIndex]);
+		// add conditional for decimal handling and abbreviations
 
-		if (token[puncIndex..] == "...")
+		if (AbbrevRegex().IsMatch(token))
 		{
-			tokens.Add("...");
+			tokens.Add(AbbrevRegex().Match(token).ToString());
+			var s = AbbrevRegex().Replace(token, "");
+			if (!string.IsNullOrWhiteSpace(s))
+			{
+				tokens.Add(s);
+			}
 		}
 		else
 		{
-			foreach (var c in token[puncIndex..])
+			// need to preserve order of where the punc is in the token
+			var word = new StringBuilder("");
+			for (var i = 0; i < token.Length; i++)
 			{
-				tokens.Add(c.ToString());
+				var c = token[i];
+				if (char.IsPunctuation(c))
+				{
+					tokens.Add(c.ToString());
+				}
+				else
+				{
+					word.Append(c);
+					if (i + 1 < token.Length && char.IsPunctuation(token[i + 1]))
+					{
+						tokens.Add(word.ToString());
+						word.Clear();
+					}
+				}
 			}
 		}
 	}
 
 	private static void HandleContractionsPossessives(IList<string> tokens, string token)
 	{
-		if (token.Count(c => c.ToString() == "'") == 1)
-		{
-			if (token.EndsWith("n't"))
-			{
-				var i = token.IndexOf("n't", StringComparison.Ordinal);
-				tokens.Add(token[..i]);
-				tokens.Add("n't");
-			}
-			else
-			{
-				var i = token.IndexOf('\'');
-				tokens.Add(token[..i]);
-				tokens.Add(token[i..]);
-			}
-		}
+		var r = ContractOrPossessRegex();
+		var match = r.Match(token);
+
+		tokens.Add(r.Replace(token, ""));
+		tokens.Add(match.ToString());
 	}
 
 	private static bool IsContractionOrPossessive(string token)
 	{
-		token = token.ToLower();
-		return token.EndsWith("'s") ||
-		       token.EndsWith("'re") ||
-		       token.EndsWith("'ve") ||
-		       token.EndsWith("'ll") ||
-		       token.EndsWith("'d") ||
-		       token.EndsWith("n't") ||
-		       token.EndsWith("'m");
+		return ContractOrPossessRegex().IsMatch(token);
 	}
 
 	private static bool IsSpecialException(string token)
@@ -88,4 +89,16 @@ public class DotNLP
 		       token == "y'all" ||
 		       token == "ma'am";
 	}
+
+	[GeneratedRegex(@"n?'\w\w?", RegexOptions.IgnoreCase)]
+	private static partial Regex ContractOrPossessRegex();
+	
+    [GeneratedRegex(@"(\b\w\.\w\.\w?)|(\b\w{1,3}\.\b)", RegexOptions.IgnoreCase)]
+    private static partial Regex AbbrevRegex();
+
+    [GeneratedRegex(@"\p{P}")]
+    private static partial Regex PuncRegex();
+
+    [GeneratedRegex(@"")]
+    private static partial Regex DecimalRegex();
 }
