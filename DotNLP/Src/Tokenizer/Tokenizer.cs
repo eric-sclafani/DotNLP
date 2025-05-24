@@ -5,7 +5,7 @@ namespace DotNLP.Tokenizer;
 
 public partial class Tokenizer
 {
-	public static IEnumerable<string> WordTokenize(string text)
+	public static IList<string> WordTokenize(string text)
 	{
 		IList<string> textTokens = text.Split(" ", StringSplitOptions.RemoveEmptyEntries);
 		IList<string> resultTokens = [];
