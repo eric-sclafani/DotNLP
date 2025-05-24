@@ -1,11 +1,11 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.RegularExpressions;
 
-namespace DotNLP;
+namespace DotNLP.Tokenizer;
 
-public partial class DotNLP
+public partial class Tokenizer
 {
-	public IEnumerable<string> WordTokenize(string text)
+	public static IEnumerable<string> WordTokenize(string text)
 	{
 		IList<string> textTokens = text.Split(" ", StringSplitOptions.RemoveEmptyEntries);
 		IList<string> resultTokens = [];
@@ -21,7 +21,6 @@ public partial class DotNLP
 			{
 				HandlePunctuation(resultTokens, token);
 			}
-
 			else
 			{
 				resultTokens.Add(token);
@@ -33,9 +32,16 @@ public partial class DotNLP
 
 	private static void HandlePunctuation(IList<string> tokens, string token)
 	{
-		// add conditional for decimal handling and abbreviations
-
-		if (AbbrevRegex().IsMatch(token))
+		if (DecimalRegex().IsMatch(token))
+		{
+			var s = DecimalRegex().Replace(token, "");
+			if (!string.IsNullOrWhiteSpace(s))
+			{
+				tokens.Add(s);
+			}
+			tokens.Add(DecimalRegex().Match(token).ToString());
+		}
+		else if (AbbrevRegex().IsMatch(token))
 		{
 			tokens.Add(AbbrevRegex().Match(token).ToString());
 			var s = AbbrevRegex().Replace(token, "");
@@ -51,7 +57,7 @@ public partial class DotNLP
 			for (var i = 0; i < token.Length; i++)
 			{
 				var c = token[i];
-				if (char.IsPunctuation(c))
+				if (PuncRegex().IsMatch(c.ToString()))
 				{
 					tokens.Add(c.ToString());
 				}
@@ -90,15 +96,15 @@ public partial class DotNLP
 		       token == "ma'am";
 	}
 
-	[GeneratedRegex(@"n?'\w\w?", RegexOptions.IgnoreCase)]
+	[GeneratedRegex(@"\bn?'\w\w?", RegexOptions.IgnoreCase)]
 	private static partial Regex ContractOrPossessRegex();
 	
     [GeneratedRegex(@"(\b\w\.\w\.\w?)|(\b\w{1,3}\.\b)", RegexOptions.IgnoreCase)]
     private static partial Regex AbbrevRegex();
-
-    [GeneratedRegex(@"\p{P}")]
+ 
+    [GeneratedRegex(@"[\p{P}`$\^\|]")]
     private static partial Regex PuncRegex();
-
-    [GeneratedRegex(@"")]
+ 
+    [GeneratedRegex(@"\d?\.\d+")]
     private static partial Regex DecimalRegex();
 }
