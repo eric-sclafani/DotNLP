@@ -1,37 +1,33 @@
-using static DotNLP.Tokenizer.Tokenizer;
+using DotNLP.Processing;
 
 namespace DotNLP.Models;
 
 
-
 public class Doc
 {
-	private string Text { get; }
+	private readonly Vocab _vocab;
+	private string _text { get; }
+	
+	public IList<Token> Tokens { get; private set; }
 
-	public Doc(string text)
+	public Doc(string text, Vocab vocab)
 	{
-		Text = text;
+		_text = text;
+		_vocab = vocab;
+		Tokens = InitTokens();
+	}
+
+	private IList<Token> InitTokens()
+	{
+		var tokenizer = new Tokenizer(_vocab);
+		return tokenizer.Tokenize(_text);
 	}
 
 	public override string ToString()
 	{
-		return Text;
+		return _text;
 	}
-
-	public IList<string> Tokens()
-	{
-		return WordTokenize(Text);
-	}
-
-	// public List<string[]> NGrams(int n = 2)
-	// {
-	// 	var tokens = Tokens();
-	// 	List<string[]> ngrams = [];
-	// 	for (var i = 0; i < tokens.Count-1; i++)
-	// 	{
-	// 		
-	// 	}
-	// 	
-	// 	
-	// }
+	
+	
+	
 }

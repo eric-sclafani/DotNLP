@@ -1,37 +1,53 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using DotNLP.Models;
 
-namespace DotNLP.Tokenizer;
+namespace DotNLP.Processing;
 
 public partial class Tokenizer
 {
-	public static IList<string> WordTokenize(string text)
-	{
-		IList<string> textTokens = text.Split(" ", StringSplitOptions.RemoveEmptyEntries);
-		IList<string> resultTokens = [];
+	private readonly Vocab _vocab;
 
-		foreach (var token in textTokens)
+	public Tokenizer(Vocab vocab)
+	{
+		_vocab = vocab;
+	}
+
+	public IList<Token> Tokenize(string text)
+	{
+		IList<string> textSplit = text.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+		IList<Token> tokens = [];
+
+		foreach (var token in textSplit)
 		{
-			if (IsContractionOrPossessive(token) && !IsSpecialException((token)))
+			IList<string> innerTokens = [];
+			if (ContractOrPossessRegex().IsMatch(token) && !IsSpecialException((token)))
 			{
-				HandleContractionsPossessives(resultTokens, token);
+				innerTokens = HandleContractionsPossessives(token);
 			}
 
 			else if (PuncRegex().IsMatch(token) && !IsSpecialException((token)))
 			{
-				HandlePunctuation(resultTokens, token);
+				innerTokens = HandlePunctuation(token);
 			}
 			else
 			{
-				resultTokens.Add(token);
+				innerTokens.Add(token);
+			}
+
+			foreach (var innerToken in innerTokens)
+			{
+				var id = _vocab.TryAddtoken(innerToken);
+				tokens.Add(new Token(_vocab, id));
 			}
 		}
 
-		return resultTokens;
+		return tokens;
 	}
 
-	private static void HandlePunctuation(IList<string> tokens, string token)
+	private static IList<string> HandlePunctuation(string token)
 	{
+		IList<string> tokens = [];
 		if (DecimalRegex().IsMatch(token))
 		{
 			var s = DecimalRegex().Replace(token, "");
@@ -39,6 +55,7 @@ public partial class Tokenizer
 			{
 				tokens.Add(s);
 			}
+
 			tokens.Add(DecimalRegex().Match(token).ToString());
 		}
 		else if (AbbrevRegex().IsMatch(token))
@@ -72,20 +89,19 @@ public partial class Tokenizer
 				}
 			}
 		}
+
+		return tokens;
 	}
 
-	private static void HandleContractionsPossessives(IList<string> tokens, string token)
+	private static IList<string> HandleContractionsPossessives(string token)
 	{
+		IList<string> tokens = [];
 		var r = ContractOrPossessRegex();
 		var match = r.Match(token);
 
 		tokens.Add(r.Replace(token, ""));
 		tokens.Add(match.ToString());
-	}
-
-	private static bool IsContractionOrPossessive(string token)
-	{
-		return ContractOrPossessRegex().IsMatch(token);
+		return tokens;
 	}
 
 	private static bool IsSpecialException(string token)
@@ -98,13 +114,13 @@ public partial class Tokenizer
 
 	[GeneratedRegex(@"\bn?'\w\w?", RegexOptions.IgnoreCase)]
 	private static partial Regex ContractOrPossessRegex();
-	
-    [GeneratedRegex(@"(\b\w\.\w\.\w?)|(\b\w{1,3}\.\b)", RegexOptions.IgnoreCase)]
-    private static partial Regex AbbrevRegex();
- 
-    [GeneratedRegex(@"[\p{P}`$\^\|]")]
-    private static partial Regex PuncRegex();
- 
-    [GeneratedRegex(@"\d?\.\d+")]
-    private static partial Regex DecimalRegex();
+
+	[GeneratedRegex(@"(\b\w\.\w\.\w?)|(\b\w{1,3}\.\b)", RegexOptions.IgnoreCase)]
+	private static partial Regex AbbrevRegex();
+
+	[GeneratedRegex(@"[\p{P}`$\^\|]")]
+	private static partial Regex PuncRegex();
+
+	[GeneratedRegex(@"\d?\.\d+")]
+	private static partial Regex DecimalRegex();
 }
