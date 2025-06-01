@@ -95,11 +95,14 @@ public partial class Tokenizer
 
 	private static IList<string> HandleContractionsPossessives(string token)
 	{
-		IList<string> tokens = [];
+		List<string> tokens = [];
 		var r = ContractOrPossessRegex();
 		var match = r.Match(token);
 
-		tokens.Add(r.Replace(token, ""));
+		tokens.Add(token[..match.Index]);
+
+		// Problem: "He didn't." gets incorrectly parsed.
+		
 		tokens.Add(match.ToString());
 		return tokens;
 	}
@@ -112,7 +115,7 @@ public partial class Tokenizer
 		       token == "ma'am";
 	}
 
-	[GeneratedRegex(@"\bn?'\w\w?", RegexOptions.IgnoreCase)]
+	[GeneratedRegex(@"n?'\w\w?", RegexOptions.IgnoreCase)]
 	private static partial Regex ContractOrPossessRegex();
 
 	[GeneratedRegex(@"(\b\w\.\w\.\w?)|(\b\w{1,3}\.\b)", RegexOptions.IgnoreCase)]
